@@ -1,0 +1,36 @@
+---
+- hosts: app
+  sudo: yes
+  vars_files:
+    - vars.yml
+
+  tasks:
+    - name: Update apt
+      apt: update_cache=yes
+
+    - name: Install apt packages
+      apt: name={{item}} state=latest
+      with_items:
+        - software-properties-common
+
+    - name: haskell ppa
+      apt_repository: repo='ppa:hvr/ghc'
+
+    - name: Update apt
+      apt: update_cache=yes
+
+    - name: Install apt packages
+      apt: name={{item}} state=latest
+      with_items:
+        - git
+        - vim
+        - cabal-install-1.20
+        - ghc-7.8.4
+
+    - name: Add cabal path
+      shell: 'cat >> ~/.bashrc <<EOF
+export PATH=~/.cabal/bin:/opt/cabal/1.20/bin:/opt/ghc/7.8.4/bin:$PATH
+EOF'
+
+    - name: Cabal update
+      shell: 'cabal update && cabal install alex happy'
