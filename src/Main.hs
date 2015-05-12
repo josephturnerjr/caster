@@ -26,11 +26,7 @@ main = withSocketsDo $ do
 runConn :: Handle -> StateMVar -> IO ()
 runConn hdl stateMVar = do
   hSetBuffering hdl LineBuffering
-  (cmd:args) <- fmap words $ hGetLine hdl
-  case (lookupFn cmd) of 
-    Just fn' -> do
-      resp <- fn' args stateMVar
-      hPutStrLn hdl resp
-    Nothing ->
-      hPutStrLn hdl ("ERROR: UNKNOWN COMMAND '" ++ cmd ++ "'")
+  cmdLine <- hGetLine hdl
+  resp <- runCmd cmdLine
+  hPutStrLn hdl resp
   hClose hdl

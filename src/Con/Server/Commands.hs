@@ -1,4 +1,4 @@
-module Con.Server.Commands (lookupFn) where
+module Con.Server.Commands (runCmd) where
 
 import qualified Data.Map.Strict as M
 import Control.Concurrent
@@ -7,6 +7,12 @@ import Data.Maybe
 import Con.Server.Types
 
 type LineCommand = [String] -> StateMVar -> IO String
+
+runCmd :: String -> IO String
+runCmd cmdLine = let (cmd:args) = words cmdLine in
+  case (lookupFn cmd) of 
+    Just fn' -> fn' args stateMVar
+    Nothing -> return $ "ERROR: UNKNOWN COMMAND '" ++ cmd ++ "'"
 
 fnMap :: M.Map String LineCommand
 fnMap = M.fromList [("GET", getValue), ("SET", setValue), ("KEYS", listKeys)]
