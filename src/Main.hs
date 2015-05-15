@@ -16,17 +16,17 @@ main :: IO ()
 main = withSocketsDo $ do
   sock <- listenOn (PortNumber (fromIntegral listenPort))
   printf "Listening on port %d\n" listenPort
-  st <- newMVar (M.empty :: ValueMap)
+  st <- newServerState
   forever $ do
      (handle, host, port) <- accept sock
      printf "Accepted connection from %s: %s\n" host (show port)
      forkIO (runConn handle st) 
 
 
-runConn :: Handle -> StateMVar -> IO ()
-runConn hdl stateMVar = do
+runConn :: Handle -> ServerState -> IO ()
+runConn hdl state = do
   hSetBuffering hdl LineBuffering
   cmdLine <- hGetLine hdl
-  resp <- runCmd cmdLine
+  resp <- runCmd cmdLine state
   hPutStrLn hdl resp
   hClose hdl

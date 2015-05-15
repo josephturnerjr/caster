@@ -1,5 +1,5 @@
 {-# LANGUAGE RecordWildCards #-}
-module Con.Types.TimeWindowAggregate () where
+module Con.Types.TimeWindowAggregate (TimePeriod, TimeWindowAggr, newTWAggr, retrieve, accumTM) where
 
 import qualified Data.Map.Strict as M
 import Control.Concurrent.MVar
@@ -10,7 +10,7 @@ import Control.Concurrent
 
 type WindowPBFreqMS = Int
 type MTimeWindow = MVar TimeWindow
-data TimePeriod = Minute | Hour | Day | Week | ThirtyDay | Year
+data TimePeriod = Minute | Hour | Day | Week | ThirtyDay | Year deriving (Read, Show)
 data TimeWindowAggr = TimeWindowAggr {
   twMap :: M.Map String MTimeWindow,
   registry :: WindowRegistry,
@@ -26,8 +26,8 @@ tpToWPBFMS Week = 7 * (tpToWPBFMS Day)
 tpToWPBFMS ThirtyDay = 30 * (tpToWPBFMS Day)
 tpToWPBFMS Year = 365 * (tpToWPBFMS Day)
 
-newTWAgg :: TimePeriod -> IO TimeWindowAggr
-newTWAgg tp = do
+newTWAggr :: TimePeriod -> IO TimeWindowAggr
+newTWAggr tp = do
   r <- newWindowRegistry
   return $ TimeWindowAggr M.empty r tp
 

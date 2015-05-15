@@ -11,7 +11,7 @@ data TimeWindow = TimeWindow {
   
 
 defaultWindowLength :: Int
-defaultWindowLength = 10 
+defaultWindowLength = 100
 
 initWindow :: Int -> S.Seq Double
 initWindow windowLength = S.fromList $ Prelude.replicate windowLength 0.0
