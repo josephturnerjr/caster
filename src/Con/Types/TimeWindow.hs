@@ -1,5 +1,5 @@
 {-# LANGUAGE RecordWildCards #-}
-module Con.Types.TimeWindow () where
+module Con.Types.TimeWindow (TimeWindow, newTimeWindow, accum, value, pushBack) where
 
 import Data.Sequence as S
 import Data.Foldable as F
@@ -11,7 +11,7 @@ data TimeWindow = TimeWindow {
   
 
 defaultWindowLength :: Int
-defaultWindowLength = 3
+defaultWindowLength = 10 
 
 initWindow :: Int -> S.Seq Double
 initWindow windowLength = S.fromList $ Prelude.replicate windowLength 0.0
