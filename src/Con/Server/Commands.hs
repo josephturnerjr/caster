@@ -3,8 +3,6 @@ module Con.Server.Commands (runCmd) where
 
 import qualified Data.Map.Strict as M
 import Control.Concurrent
-import Data.Maybe
-
 import Con.Server.Types
 import Con.Types.TimeWindowAggregate
 
@@ -31,10 +29,10 @@ lookupFn name = M.lookup name fnMap
 
 createNewTW :: String -> String -> TWAMap -> IO (Either TWAMap String)
 createNewTW name windowLength valueMap = case M.lookup name valueMap of
-  Just twa -> return $ Left valueMap
+  Just _ -> return $ Left valueMap
   Nothing -> case (readMaybe windowLength)::Maybe TimePeriod of
-    Just length -> do
-      agg <- newTWAggr length
+    Just len -> do
+      agg <- newTWAggr len
       return $ Left $ M.insert name agg valueMap
     Nothing -> return $ Right "Incorrect window length requested"
 
@@ -44,7 +42,7 @@ declareTW (name:windowLength:[]) (ServerState {..}) = do
   ret <- createNewTW name windowLength valueMap
   let (resp, newMap) = case ret of
                        Left valueMap' -> ("OK", valueMap') 
-                       Right error -> (error, valueMap)
+                       Right err -> (err, valueMap)
   putMVar timeWindowAggrs newMap
   return resp
 declareTW _ _ = return "ERROR: Wrong number of arguments"
@@ -59,7 +57,7 @@ getFromTW key popKey = maybe (return 0.0) (retrieve popKey) . M.lookup key
 
 getTW :: LineCommand
 getTW (name:popName:[]) (ServerState {..}) = do 
-  valueMap <- takeMVar timeWindowAggrs
+  valueMap <- takeMVar timeWindowAggrs -- TODO replace these with mvar functions
   val <- getFromTW name popName valueMap
   putMVar timeWindowAggrs valueMap
   return (show val)
@@ -80,7 +78,7 @@ accumTW (name:popName:value:[]) (ServerState {..}) = do
   ret <- accumTW' name popName value valueMap
   let (resp, newMap) = case ret of
                        Left valueMap' -> ("OK", valueMap') 
-                       Right error -> (error, valueMap)
+                       Right err -> (err, valueMap)
   putMVar timeWindowAggrs newMap
   return resp
 accumTW _ _ = return "ERROR: Wrong number of arguments"

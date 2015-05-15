@@ -2,7 +2,6 @@ module Con.Server.Types (TWAMap, ServerState(..), newServerState) where
 
 import Control.Concurrent
 
-import Con.Types
 import Con.Types.TimeWindowAggregate
 import qualified Data.Map as M
 

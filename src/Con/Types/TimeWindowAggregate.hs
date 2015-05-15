@@ -6,7 +6,6 @@ import Control.Concurrent.MVar
 import Con.Types.TimeWindow
 import Control.Concurrent.Timer
 import Control.Concurrent.Suspend (msDelay)  
-import Control.Concurrent
 
 type WindowPBFreqMS = Int
 type MTimeWindow = MVar TimeWindow
@@ -39,12 +38,14 @@ retrieve k (TimeWindowAggr {..}) = case M.lookup k twMap of
 accumTM :: String -> Double -> TimeWindowAggr -> IO TimeWindowAggr
 accumTM k v twa@(TimeWindowAggr {..}) = case M.lookup k twMap of
   Just mtw -> do
+    putStrLn $ "Found value " ++ (show k) ++ " in " ++ (show $ M.keys twMap)
     accumM v mtw
     return twa
   Nothing -> do
+    putStrLn $ "No value " ++ (show k) ++ " in " ++ (show $ M.keys twMap)
     (mtw, reg') <- registerTimeWindow (tpToWPBFMS timePeriod) registry
     accumM v mtw
-    return $ TimeWindowAggr twMap reg' timePeriod
+    return $ TimeWindowAggr (M.insert k mtw twMap) reg' timePeriod
 
 pushBackAll :: MVar [MTimeWindow] -> IO ()
 pushBackAll mv = do
@@ -66,7 +67,7 @@ newMTimeWindow :: IO MTimeWindow
 newMTimeWindow = newMVar newTimeWindow
 
 accumM :: Double -> MTimeWindow -> IO ()
-accumM d mtw = let accum' d tw = return $ accum d tw in
+accumM d mtw = let accum' d' tw = return $ accum d' tw in
   modifyMVar_ mtw (accum' d)
 
 takeAndCons :: MTimeWindow -> MVar [MTimeWindow] -> IO ()

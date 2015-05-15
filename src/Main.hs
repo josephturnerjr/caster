@@ -3,10 +3,8 @@ import System.IO
 import Control.Concurrent
 import Control.Monad
 import Text.Printf
-import qualified Data.Map.Strict as M
 
 import Con.Server.Commands
-import Con.Types
 import Con.Server.Types
 
 listenPort :: Int
