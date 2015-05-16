@@ -8,6 +8,11 @@ import Con.Types.TimeWindowAggregate
 
 type LineCommand = [String] -> ServerState -> IO String
 
+readMaybe :: (Read a) => String -> Maybe a
+readMaybe s = case reads s of
+              [(x, "")] -> Just x
+              _ -> Nothing
+
 runCmd :: String -> ServerState -> IO String
 runCmd cmdLine state = let (cmd:args) = words cmdLine in
   case (lookupFn cmd) of 
@@ -16,9 +21,11 @@ runCmd cmdLine state = let (cmd:args) = words cmdLine in
 
 fnMap :: M.Map String LineCommand
 fnMap = M.fromList [
-  ("GETTW", getTW),
+  ("DECLTW", declareTW),
   ("ACCUMTW", accumTW),
-  ("DECLTW", declareTW)
+  ("GETTW", getTW),
+  ("VARTW", varianceTW),
+  ("MEANTW", meanTW)
   ]
   --("GET", getValue),
   --("SET", setValue),
@@ -27,41 +34,32 @@ fnMap = M.fromList [
 lookupFn :: String -> Maybe LineCommand
 lookupFn name = M.lookup name fnMap
 
-createNewTW :: String -> String -> TWAMap -> IO (Either TWAMap String)
-createNewTW name windowLength valueMap = case M.lookup name valueMap of
-  Just _ -> return $ Left valueMap
-  Nothing -> case (readMaybe windowLength)::Maybe TimePeriod of
-    Just len -> do
-      agg <- newTWAggr len
-      return $ Left $ M.insert name agg valueMap
-    Nothing -> return $ Right "Incorrect window length requested"
-
 declareTW :: LineCommand
-declareTW (name:windowLength:[]) (ServerState {..}) = do 
-  valueMap <- takeMVar timeWindowAggrs
-  ret <- createNewTW name windowLength valueMap
-  let (resp, newMap) = case ret of
-                       Left valueMap' -> ("OK", valueMap') 
-                       Right err -> (err, valueMap)
-  putMVar timeWindowAggrs newMap
-  return resp
+declareTW (name:windowLength:[]) (ServerState {..}) =
+  modifyMVar timeWindowAggrs (wrapTWMod (createNewTW name windowLength))
 declareTW _ _ = return "ERROR: Wrong number of arguments"
 
-readMaybe :: (Read a) => String -> Maybe a
-readMaybe s = case reads s of
-              [(x, "")] -> Just x
-              _ -> Nothing
-
-getFromTW :: String -> String -> TWAMap -> IO Double
-getFromTW key popKey = maybe (return 0.0) (retrieve popKey) . M.lookup key
+accumTW :: LineCommand
+accumTW (name:popName:value:[]) (ServerState {..}) =
+  modifyMVar timeWindowAggrs (wrapTWMod (accumTW' name popName value))
+accumTW _ _ = return "ERROR: Wrong number of arguments"
 
 getTW :: LineCommand
-getTW (name:popName:[]) (ServerState {..}) = do 
-  valueMap <- takeMVar timeWindowAggrs -- TODO replace these with mvar functions
-  val <- getFromTW name popName valueMap
-  putMVar timeWindowAggrs valueMap
-  return (show val)
+getTW (name:popName:[]) (ServerState {..}) =
+  fmap show $ withMVar timeWindowAggrs (valFromTW name popName)
 getTW _ _ = return "ERROR: Wrong number of arguments"
+
+meanTW :: LineCommand
+meanTW (name:[]) (ServerState {..}) =
+  fmap show $ withMVar timeWindowAggrs (meanFromTW name)
+meanTW _ _ = return "ERROR: Wrong number of arguments"
+
+varianceTW :: LineCommand
+varianceTW (name:[]) (ServerState {..}) =
+  fmap show $ withMVar timeWindowAggrs (varianceFromTW name) 
+varianceTW _ _ = return "ERROR: Wrong number of arguments"
+
+-- Utility functions
 
 accumTW' :: String -> String -> String -> TWAMap -> IO (Either TWAMap String)
 accumTW' key popKey valS twm = case (readMaybe valS)::Maybe Double of
@@ -72,16 +70,33 @@ accumTW' key popKey valS twm = case (readMaybe valS)::Maybe Double of
     Nothing -> return $ Right "Undeclared aggregate name"
   Nothing -> return $ Right "Incorrect value format"
 
-accumTW :: LineCommand
-accumTW (name:popName:value:[]) (ServerState {..}) = do 
-  valueMap <- takeMVar timeWindowAggrs
-  ret <- accumTW' name popName value valueMap
-  let (resp, newMap) = case ret of
-                       Left valueMap' -> ("OK", valueMap') 
-                       Right err -> (err, valueMap)
-  putMVar timeWindowAggrs newMap
-  return resp
-accumTW _ _ = return "ERROR: Wrong number of arguments"
+createNewTW :: String -> String -> TWAMap -> IO (Either TWAMap String)
+createNewTW name windowLength valueMap = case M.lookup name valueMap of
+  Just _ -> return $ Left valueMap
+  Nothing -> case (readMaybe windowLength)::Maybe TimePeriod of
+    Just len -> do
+      agg <- newTWAggr len
+      return $ Left $ M.insert name agg valueMap
+    Nothing -> return $ Right "Incorrect window length requested"
+
+valFromTW :: String -> String -> TWAMap -> IO Double
+valFromTW key popKey = applyToTW key (retrieve popKey) 0.0
+
+meanFromTW :: String -> TWAMap -> IO Double
+meanFromTW key = applyToTW key mean 0.0
+
+varianceFromTW :: String -> TWAMap -> IO Double
+varianceFromTW key = applyToTW key variance 0.0
+
+applyToTW :: String -> (TimeWindowAggr -> IO a) -> a -> TWAMap -> IO a
+applyToTW key f def = maybe (return def) f . M.lookup key
+
+wrapTWMod :: (TWAMap -> IO (Either TWAMap String)) -> TWAMap -> IO (TWAMap, String)
+wrapTWMod f m = do
+  ret <- f m
+  return $ case ret of
+             Left m' -> (m', "OK") 
+             Right err -> (m, err)
 
 {-
 getValue :: LineCommand
