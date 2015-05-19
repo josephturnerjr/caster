@@ -32,9 +32,8 @@ newTWAggr tp = do
   return $ TimeWindowAggr M.empty r tp
 
 retrieve :: String -> TimeWindowAggr -> IO Double
-retrieve k (TimeWindowAggr {..}) = case M.lookup k twMap of
-  Just v -> fmap value (readMVar v)
-  Nothing -> return 0.0
+retrieve k (TimeWindowAggr {..}) =
+  maybe (return 0.0) (fmap value . readMVar) (M.lookup k twMap)
 
 sum' :: TimeWindowAggr -> IO Double
 sum' = M.foldl' addMVar (return 0.0) . twMap
@@ -55,11 +54,9 @@ variance agg = M.foldl' f (return 0.0) (twMap agg)
 accumTM :: String -> Double -> TimeWindowAggr -> IO TimeWindowAggr
 accumTM k v twa@(TimeWindowAggr {..}) = case M.lookup k twMap of
   Just mtw -> do
-    putStrLn $ "Found value " ++ (show k) ++ " in " ++ (show $ M.keys twMap)
     accumM v mtw
     return twa
   Nothing -> do
-    putStrLn $ "No value " ++ (show k) ++ " in " ++ (show $ M.keys twMap)
     (mtw, reg') <- registerTimeWindow (tpToWPBFMS timePeriod) registry
     accumM v mtw
     return $ TimeWindowAggr (M.insert k mtw twMap) reg' timePeriod
@@ -71,9 +68,7 @@ pushBackAll mv = do
   putMVar mv tws
 
 pushBackOne :: MTimeWindow -> IO ()
-pushBackOne mtw = do
-  tw <- takeMVar mtw
-  putMVar mtw $ pushBack tw
+pushBackOne mtw = modifyMVar_ mtw (\x -> return $! pushBack x)
 
 newWindowRegistry :: IO WindowRegistry
 newWindowRegistry = return M.empty
@@ -82,13 +77,10 @@ newMTimeWindow :: IO MTimeWindow
 newMTimeWindow = newMVar newTimeWindow
 
 accumM :: Double -> MTimeWindow -> IO ()
-accumM d mtw = let accum' d' tw = return $ accum d' tw in
-  modifyMVar_ mtw (accum' d)
+accumM d mtw = modifyMVar_ mtw (return . accum d)
 
 takeAndCons :: MTimeWindow -> MVar [MTimeWindow] -> IO ()
-takeAndCons mtw mmtw = do
-  twl <- takeMVar mmtw
-  putMVar mmtw (mtw:twl)
+takeAndCons mtw mmtw = modifyMVar_ mmtw (return . (:) mtw)
 
 startThread :: WindowPBFreqMS -> MTimeWindow -> IO (MVar [MTimeWindow])
 startThread f mtw = do

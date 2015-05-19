@@ -5,8 +5,8 @@ import Data.Sequence as S
 import Data.Foldable as F
 
 data TimeWindow = TimeWindow {
-  window :: S.Seq Double,
-  accumulator :: Double
+  window :: !(S.Seq Double),
+  accumulator :: !Double
 } deriving Show
   
 
@@ -26,4 +26,4 @@ value :: TimeWindow -> Double
 value (TimeWindow {..}) = accumulator + (F.foldl' (+) 0.0 window)
 
 pushBack :: TimeWindow -> TimeWindow
-pushBack (TimeWindow {..}) = TimeWindow ((S.drop 1 window) |> accumulator) 0.0
+pushBack t@(TimeWindow {..}) = TimeWindow ((S.drop 1 window) |> accumulator) 0.0

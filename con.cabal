@@ -16,7 +16,7 @@ build-type:          Simple
 cabal-version:       >=1.10
 
 executable con
-  ghc-options:         -Wall -O3 -threaded
+  ghc-options:         -rtsopts -Wall -O3 -threaded -fprof-auto "-with-rtsopts=-N -s -hT -i0.1"
   main-is:             Main.hs
   -- other-modules:       
   -- other-extensions:    
