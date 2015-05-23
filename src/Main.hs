@@ -31,9 +31,3 @@ runConn hdl state = do
   resp <- runCmd cmdLine state
   hPutStrLn hdl resp
   hClose hdl
-
-iter = pushBack . accum 10
-iterate' f c 0 = seq c c
-iterate' f c n = let y = f c in y `seq` iterate' f y (n-1)
-
-main' = putStrLn . show $ iterate' iter newTimeWindow 5000000

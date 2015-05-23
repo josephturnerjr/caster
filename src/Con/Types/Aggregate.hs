@@ -1,4 +1,4 @@
-module Con.Types.Aggregate (newAgg, retrieve, aggregate, aggSum, mean, variance) where
+module Con.Types.Aggregate (Aggregate, newAgg, singleton, retrieve, aggregate, aggSum, mean, variance) where
 
 import qualified Data.Map as M
 
@@ -6,6 +6,9 @@ type Aggregate = M.Map String Double
 
 newAgg :: Aggregate
 newAgg = M.empty
+
+singleton :: String -> Double -> Aggregate
+singleton = M.singleton
 
 retrieve :: String -> Aggregate -> Double
 retrieve = M.findWithDefault 0.0
