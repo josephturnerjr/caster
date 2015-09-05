@@ -20,7 +20,7 @@ main = withSocketsDo $ do
   st <- newServerState
   forever $ do
      (handle, host, port) <- accept sock
-     printf "Accepted connection from %s: %s\n" host (show port)
+     --printf "Accepted connection from %s: %s\n" host (show port)
      forkIO (runConn handle st) 
 
 
