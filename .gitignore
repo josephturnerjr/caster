@@ -15,3 +15,5 @@ cabal.config
 *.aux
 test.txt
 .vagrant/
+.stack-work/
+*.swp
